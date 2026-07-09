@@ -793,6 +793,12 @@
     const copyBtn = $('#copyBtn');
     const toast = $('#toast');
 
+    /* Base path dell'app (sub-path safe): toglie la route client /download/<id>
+       cosi le chiamate API risolvono sempre contro la radice dell'app. */
+    const APP_BASE = window.location.pathname
+      .replace(/download\/[a-zA-Z0-9-]+\/?$/, "")
+      .replace(/\/*$/, "/");
+
     /* ── Routing ────────────────────────────────────────────────── */
     function getRoute() {
       const path = window.location.pathname;
@@ -956,7 +962,7 @@
         uploadProgress.classList.remove('active');
       });
 
-      xhr.open('POST', 'api/upload');
+      xhr.open('POST', APP_BASE + 'api/upload');
       xhr.send(formData);
     }
 
@@ -966,7 +972,7 @@
     }
 
     function showResult(data) {
-      const fullUrl = window.location.origin + window.location.pathname.replace(/\/+$/, '') + '/' + data.downloadUrl;
+      const fullUrl = window.location.origin + APP_BASE + data.downloadUrl;
       shareLink.value = fullUrl;
       resultCard.classList.add('active');
       uploadError.classList.remove('active');
@@ -1044,7 +1050,7 @@
         </div>
 
         <div class="download-actions">
-          <a href="api/file/${meta.id}/download" class="btn btn-download" download>
+          <a href="${APP_BASE}api/file/${meta.id}/download" class="btn btn-download" download>
             <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
               <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/>
               <polyline points="7 10 12 15 17 10"/>
@@ -1181,7 +1187,7 @@
         downloadView.classList.add('active');
 
         // Fetch metadata
-        fetch('api/file/' + route.id)
+        fetch(APP_BASE + 'api/file/' + route.id)
           .then(r => r.json().then(data => ({ status: r.status, data })))
           .then(({ status, data }) => {
             if (status === 200) {
