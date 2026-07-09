@@ -5,7 +5,9 @@ const path = require('path');
 // We'll start the server in a child process for testing
 const { spawn } = require('child_process');
 
-const PORT = 4599;
+// Porta casuale alta: una porta fissa (es. 4599) puo essere occupata da
+// un'ALTRA app e i test parlerebbero col server sbagliato senza saperlo.
+const PORT = 20000 + Math.floor(Math.random() * 20000);
 const BASE = `http://localhost:${PORT}`;
 
 let serverProcess;
@@ -96,6 +98,9 @@ async function runTests() {
     assert(body && body.originalName === 'test_upload.txt', 'La risposta contiene il nome originale');
     assert(body && body.size > 0, 'La risposta contiene la dimensione');
 
+    if (!body || !body.id) {
+      throw new Error('upload fallito (risposta senza id) — salto i test dipendenti');
+    }
     const fileId = body.id;
     const downloadUrl = body.downloadUrl;
 
@@ -151,6 +156,9 @@ async function runTests() {
     formB.append('file', new Blob(['File B content'], { type: 'text/plain' }), 'file_b.txt');
     const { body: resB } = await fetchJSON('/api/upload', { method: 'POST', body: formB });
 
+    if (!resA || !resB) {
+      throw new Error('uno dei due upload indipendenti e fallito');
+    }
     assert(resA.id !== resB.id, 'I due upload hanno ID diversi');
     assert(resA.downloadUrl !== resB.downloadUrl, 'I due upload hanno link diversi');
     assert(resA.originalName !== resB.originalName, 'I nomi originali sono diversi');
@@ -185,6 +193,14 @@ serverProcess = spawn('node', ['server.js'], {
   env: { ...process.env, PORT: String(PORT) }
 });
 
+let serverReady = false;
+serverProcess.on('exit', (code) => {
+  if (!serverReady) {
+    console.error('Il server e uscito prima di essere pronto (exit ' + code + ').');
+    console.error('Output server:', serverOutput);
+    process.exit(1);
+  }
+});
 let serverOutput = '';
 serverProcess.stdout.on('data', (d) => { serverOutput += d.toString(); });
 serverProcess.stderr.on('data', (d) => { serverOutput += d.toString(); });
@@ -194,7 +210,14 @@ async function waitForServer(retries = 20) {
   for (let i = 0; i < retries; i++) {
     try {
       const res = await fetch(BASE + '/');
-      if (res.status === 200) return true;
+      if (res.status === 200) {
+        // Identita: dev'essere PROPRIO File Effimero a rispondere.
+        const text = await res.text();
+        if (text.includes('File Effimero')) return true;
+        console.error('Sulla porta ' + PORT + ' risponde un altro servizio — abort.');
+        serverProcess.kill();
+        process.exit(1);
+      }
     } catch (_) {
       // Server not ready yet
     }
@@ -207,6 +230,7 @@ async function waitForServer(retries = 20) {
 }
 
 waitForServer().then(() => {
+  serverReady = true;
   console.log('Server pronto, eseguo i test...\n');
   runTests().catch(e => {
     console.error('Errore fatale:', e);
