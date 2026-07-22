@@ -215,7 +215,7 @@ app.get('/robots.txt', (req, res) => {
   res.type('text/plain');
   res.send(`User-agent: *
 Allow: /
-Sitemap: https://cristianporco.it/app/fileeffimero/sitemap.xml
+Sitemap: https://github.com/bonciarello/fileeffimero/sitemap.xml
 `);
 });
 
@@ -225,7 +225,7 @@ app.get('/sitemap.xml', (req, res) => {
   res.send(`<?xml version="1.0" encoding="UTF-8"?>
 <urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">
   <url>
-    <loc>https://cristianporco.it/app/fileeffimero/</loc>
+    <loc>https://github.com/bonciarello/fileeffimero/</loc>
     <changefreq>monthly</changefreq>
     <priority>1.0</priority>
   </url>
